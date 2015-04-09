@@ -8,8 +8,8 @@ from utils.helpers import *
 import matplotlib.pyplot as plt
 
 # positions = load_trajectory(1080, 100)
-positions = load_trajectory(1462, 79)
-# positions = load_trajectory(3331, 100)
+# positions = load_trajectory(1462, 79)
+positions = load_trajectory(3331, 100)
 # positions = load_random_trajectory()
 n = positions.shape[0]
 
@@ -17,12 +17,12 @@ models = [
     CWPA2D(dt=1.0, q=2e-1, r=10.0),
     Brownian2D(dt=1.0, q=2e-1, r=10.0)
 ]
-Z = np.asarray([
+Z = np.log(np.asarray([
     [0.99, 0.01],
     [0.01, 0.99]
-])
+]))
 
-kalman = SwitchingKalmanFilter(n_obs=2, n_hid=6, models=models, transmat=Z)
+kalman = SwitchingKalmanFilter(n_obs=2, n_hid=6, models=models, log_transmat=Z)
 
 
 start_time = time.time()
@@ -46,11 +46,11 @@ for i in xrange(1, n):
 
 print '---- %.3f seconds ----' % (time.time() - start_time,)
 
-output_states = filtered_states
-# output_states = smoothed_states
+# output_states = filtered_states
+output_states = smoothed_states
 
-smoothed = np.asarray(map(lambda state: np.dot(state.m[0:2,:], state.M), output_states))
-stops = np.asarray(map(lambda state: state.M[1], output_states))
+smoothed = np.asarray(map(lambda state: np.dot(state.m[0:2,:], np.exp(state.M)), output_states))
+stops = np.asarray(map(lambda state: np.exp(state.M[1]), output_states))
 
 subplot_shape = (2,2)
 plt.subplot2grid(subplot_shape, (0,0), rowspan=2)
@@ -63,7 +63,7 @@ plt.plot(range(n), stops)
 plt.plot(range(n), 0.5 * np.ones(n), 'r--')
 
 plt.subplot2grid(subplot_shape, (1,1))
-velocity = np.asarray(map(lambda state: np.dot(state.m[2:4], state.M), output_states))
+velocity = np.asarray(map(lambda state: np.dot(state.m[2:4], np.exp(state.M)), output_states))
 plt.plot(range(n), map(lambda v: 3.6 * np.linalg.norm(v), velocity))
 
 plt.show()
