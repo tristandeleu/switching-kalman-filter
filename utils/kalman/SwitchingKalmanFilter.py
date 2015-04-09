@@ -1,19 +1,20 @@
 import numpy as np
+from scipy.misc import logsumexp
 from .utils import SwitchingKalmanState
-from .KalmanFilter import KalmanFilter
+from .kalmanfilter import KalmanFilter
 
 # See: K. P. Murphy, Switching Kalman Filters
 # <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.32.5379>
 
 class SwitchingKalmanFilter:
 
-    def __init__(self, n_obs, n_hid, models, transmat):
+    def __init__(self, n_obs, n_hid, models, log_transmat):
         # self.n_models = n_models
         self.n_obs = n_obs
         self.n_hid = n_hid
         self.models = models
         self.n_models = len(models)
-        self.Z = transmat
+        self.log_transmat = log_transmat
 
     def _collapse(self, mu_X, V_XX, W):
         V = np.zeros((self.n_hid, self.n_hid))
@@ -48,14 +49,13 @@ class SwitchingKalmanFilter:
                 (m_[:,i,j], P_[:,:,i,j], L[i,j]) = KalmanFilter._filter_update(pred_state, observation, self.models[i].H, self.models[i].R)
 
         # Posterior Transition
-        # TODO: Work in log-space to avoid numerical underflow
         # p(s_t-1=i, s_t=j | y_1:t) \propto L_t(i,j) * p(s_t=j | s_t-1=i) * p(s_t-1=i | y_1:t-1)
-        M = L.T * self.Z.T * prev_state.M
-        M = M.T / np.sum(M)
+        M = L.T + self.log_transmat.T + prev_state.M
+        M = M.T - logsumexp(M)
         # p(s_t=j | y_1:t) = \sum_i p(s_t-1=i, s_t=j | y_1:t)
-        state.M = np.sum(M, axis=0)
+        state.M = logsumexp(M, axis=0)
         # p(s_t-1=i | s_t=j, y_1:t) = p(s_t-1=i, s_t=j | y_1:t) / p(s_t=j | y_1:t)
-        W = M / state.M
+        W = np.exp(M - state.M)
 
         # Collapse step
         for j in xrange(self.n_models):
@@ -79,14 +79,14 @@ class SwitchingKalmanFilter:
 
         # Posterior Transition
         # p(s_t=j | s_t+1=k, y_1:T) \approx \propto p(s_t+1=k | s_t=j) * p(s_t=j | y_1:t)
-        U = self.Z.T * filtered_state.M
-        U = U.T / np.sum(U, axis=1)
+        U = self.log_transmat.T + filtered_state.M
+        U = U.T - logsumexp(U, axis=1)
         # p(s_t=j, s_t+1=k | y_1:T) = p(s_t=j | s_t+1=k, y_1:T) * p(s_t+1=k | y_1:T)
-        M = U * next_state.M
+        M = U + next_state.M
         # p(s_t=j | y1:T) = \sum_k p(s_t=j, s_t+1=k | y_1:T)
-        state.M = np.sum(M, axis=1)
+        state.M = logsumexp(M, axis=1)
         # p(s_t+1=k | s_t=j, y_1:T) = p(s_t=j, s_t+1=k | y_1:T) / p(s_t=j | y_1:T)
-        W = M.T / state.M # WARKING: W is W.T in Murphy's paper
+        W = np.exp(M.T - state.M) # WARKING: W is W.T in Murphy's paper
 
         # Collapse step
         for j in xrange(self.n_models):
