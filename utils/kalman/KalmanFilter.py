@@ -15,11 +15,7 @@ class KalmanFilter:
         return KalmanState(mean=m, covariance=P)
 
     @staticmethod
-    def _filter_update(pred_state, observation, H, R, latent_variables=None):
-        # By default, every latent variable is of interest
-        if latent_variables is None:
-            latent_variables = np.ones(H.shape[1], dtype=bool)
-
+    def _filter_update(pred_state, observation, H, R):
         # v_k = y_k - H_k * m_k^-
         v = observation - np.dot(H, pred_state.m)
         # S_k = H_k * P_k^- * H_k^T + R_k
@@ -32,7 +28,7 @@ class KalmanFilter:
         P = pred_state.P - np.dot(K, np.dot(S, K.T))
         # L_t = N(v_t | 0, S_t)
         dist = multivariate_normal(mean=np.zeros(S.shape[0]), cov=S)
-        L = dist.pdf(v)
+        L = dist.logpdf(v)
 
         return (m, P, L)
 
