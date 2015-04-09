@@ -1,6 +1,6 @@
 import numpy as np
 from .utils import SwitchingKalmanState
-from .KalmanFilter import KalmanFilter
+from .kalmanfilter import KalmanFilter
 
 # See: K. P. Murphy, Switching Kalman Filters
 # <http://citeseerx.ist.psu.edu/viewdoc/summary?doi=10.1.1.32.5379>

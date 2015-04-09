@@ -1,3 +1,3 @@
-from KalmanFilter import KalmanFilter
-from SwitchingKalmanFilter import SwitchingKalmanFilter
-from utils import *
+from .kalmanfilter import KalmanFilter
+from .switchingkalmanfilter import SwitchingKalmanFilter
+from .utils import *
