@@ -59,7 +59,7 @@ plt.plot(smoothed[:,0], smoothed[:,1], 'g-')
 plt.plot(smoothed[stops>0.50,0], smoothed[stops>0.50,1], 'ro')
 
 plt.subplot2grid(subplot_shape, (0,1))
-plt.plot(range(n), map(lambda state: state.M[1], output_states))
+plt.plot(range(n), stops)
 plt.plot(range(n), 0.5 * np.ones(n), 'r--')
 
 plt.subplot2grid(subplot_shape, (1,1))
