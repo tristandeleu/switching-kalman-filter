@@ -74,7 +74,6 @@ class SwitchingKalmanFilter:
             A = self.models[k].A
             Q = self.models[k].Q
             T = self.models[k].T
-            latent_slice = self.models[k].slice
             for j in xrange(self.n_models):
                 # Smoothing step
                 (m_[:,j,k], P_[:,:,j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, T)

@@ -30,27 +30,16 @@ class CWPA2D:
             [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
         ])
-        self.slice = slice(0,6)
         self.T = np.eye(6)
 
 class Brownian2D:
 
     def __init__(self, dt=1.0, q=2e-2, r=10.0):
 
-        self.A = np.asarray([
-            [1.0, 0.0],
-            [0.0, 1.0]
-        ])
-        self.Q = q * np.asarray([
-            [dt, 0.0],
-            [0.0, dt]
-        ])
+        self.A = np.eye(2)
+        self.Q = q * dt * np.eye(2)
         self.R = r * np.eye(2)
-        self.H = np.asarray([
-            [1.0, 0.0],
-            [0.0, 1.0]
-        ])
-        self.slice = slice(0,2)
+        self.H = np.eye(2)
         self.T = np.asarray([
             [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
