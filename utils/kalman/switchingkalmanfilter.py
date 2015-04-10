@@ -42,11 +42,12 @@ class SwitchingKalmanFilter:
         for j in xrange(self.n_models):
             A = self.models[j].A
             Q = self.models[j].Q
+            T = self.models[j].T
             for i in xrange(self.n_models):
                 # Prediction step
-                pred_state = KalmanFilter._filter_prediction(prev_state.model(i), A, Q)
+                pred_state = KalmanFilter._filter_prediction(prev_state.model(i), A, Q, T)
                 # Update step
-                (m_[:,i,j], P_[:,:,i,j], L[i,j]) = KalmanFilter._filter_update(pred_state, observation, self.models[i].H, self.models[i].R)
+                (m_[:,i,j], P_[:,:,i,j], L[i,j]) = KalmanFilter._filter_update(pred_state, observation, self.models[i].H, self.models[i].R, self.models[i].T)
 
         # Posterior Transition
         # p(s_t-1=i, s_t=j | y_1:t) \propto L_t(i,j) * p(s_t=j | s_t-1=i) * p(s_t-1=i | y_1:t-1)
@@ -72,10 +73,11 @@ class SwitchingKalmanFilter:
         for k in xrange(self.n_models):
             A = self.models[k].A
             Q = self.models[k].Q
+            T = self.models[k].T
             latent_slice = self.models[k].slice
             for j in xrange(self.n_models):
                 # Smoothing step
-                (m_[:,j,k], P_[:,:,j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, latent_slice)
+                (m_[:,j,k], P_[:,:,j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, T)
 
         # Posterior Transition
         # p(s_t=j | s_t+1=k, y_1:T) \approx \propto p(s_t+1=k | s_t=j) * p(s_t=j | y_1:t)

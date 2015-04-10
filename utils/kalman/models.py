@@ -1,6 +1,6 @@
 import numpy as np
 
-class CWPA2D():
+class CWPA2D:
     # Continuous Wiener Process Acceleration in 2D
 
     def __init__(self, dt=1.0, q=2e-2, r=10.0):
@@ -31,30 +31,27 @@ class CWPA2D():
             [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
         ])
         self.slice = slice(0,6)
+        self.T = np.eye(6)
 
-class Brownian2D():
+class Brownian2D:
 
     def __init__(self, dt=1.0, q=2e-2, r=10.0):
 
         self.A = np.asarray([
-            [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            [1.0, 0.0],
+            [0.0, 1.0]
         ])
         self.Q = q * np.asarray([
-            [dt, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, dt, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+            [dt, 0.0],
+            [0.0, dt]
         ])
         self.R = r * np.eye(2)
         self.H = np.asarray([
+            [1.0, 0.0],
+            [0.0, 1.0]
+        ])
+        self.slice = slice(0,2)
+        self.T = np.asarray([
             [1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             [0.0, 1.0, 0.0, 0.0, 0.0, 0.0]
         ])
-        self.slice = slice(0,2)
