@@ -21,8 +21,12 @@ Z = np.log(np.asarray([
     [0.99, 0.01],
     [0.01, 0.99]
 ]))
+masks = np.asarray([
+    np.diag([1, 0, 1, 0, 1, 0]),
+    np.diag([0, 1, 0, 1, 0, 1])
+])
 
-kalman = SwitchingKalmanFilter(n_obs=2, n_hid=6, models=models, log_transmat=Z)
+kalman = SwitchingKalmanFilter(n_obs=2, n_hid=6, models=models, log_transmat=Z, masks=masks)
 
 
 start_time = time.time()
