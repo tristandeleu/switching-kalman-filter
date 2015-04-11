@@ -2,7 +2,7 @@ import csv, time
 import numpy as np
 
 from utils.kalman import SwitchingKalmanState, SwitchingKalmanFilter
-from utils.kalman.models import CWPA2D, Brownian2D
+from utils.kalman.models import NDCWPA, NDBrownian
 from utils.helpers import *
 
 import matplotlib.pyplot as plt
@@ -14,8 +14,8 @@ positions = load_trajectory(3331, 100)
 n = positions.shape[0]
 
 models = [
-    CWPA2D(dt=1.0, q=2e-1, r=10.0),
-    Brownian2D(dt=1.0, q=2e-1, r=10.0)
+    NDCWPA(dt=1.0, q=2e-1, r=10.0, n_dim=2),
+    NDBrownian(dt=1.0, q=2e-1, r=10.0, n_dim=2)
 ]
 Z = np.log(np.asarray([
     [0.99, 0.01],
