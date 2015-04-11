@@ -8,26 +8,22 @@ from .kalmanfilter import KalmanFilter
 
 class SwitchingKalmanFilter:
 
-    def __init__(self, n_obs, n_hid, models, log_transmat):
-        # self.n_models = n_models
+    def __init__(self, n_obs, n_hid, models, log_transmat, masks):
         self.n_obs = n_obs
         self.n_hid = n_hid
         self.models = models
         self.n_models = len(models)
         self.log_transmat = log_transmat
+        self.masks = masks
 
     def _collapse(self, mu_X, V_XX, W):
-        V = np.zeros((self.n_hid, self.n_hid))
-
         mu = np.dot(mu_X, W)
 
+        mu_X_c = mu_X.T - mu
+        mu_X_m = np.dot(self.masks, mu_X_c.T)
+        V = np.dot(V_XX, W)
         for i in xrange(self.n_models):
-            # TODO: generalize this to any number of observations
-            x_c = mu_X[:,i] - mu
-            y_c = mu_X[:,i] - mu
-            x_c[0::2] = 0.0
-            y_c[1::2] = 0.0
-            V += W[i] * (V_XX[:,:,i] + np.outer(x_c, x_c) + np.outer(y_c, y_c))
+            V += W[i] * np.dot(mu_X_m[:,:,i].T, mu_X_m[:,:,i])
 
         return (mu, V)
 
@@ -36,17 +32,17 @@ class SwitchingKalmanFilter:
         P_ = np.zeros((self.n_hid, self.n_hid, self.n_models, self.n_models))
         state = SwitchingKalmanState(mean=np.zeros((self.n_hid, self.n_models)), \
             covariance=np.zeros((self.n_hid, self.n_hid, self.n_models)))
-
         L = np.zeros((self.n_models, self.n_models))
 
         for j in xrange(self.n_models):
             A = self.models[j].A
             Q = self.models[j].Q
+            T = self.models[j].T
             for i in xrange(self.n_models):
                 # Prediction step
-                pred_state = KalmanFilter._filter_prediction(prev_state.model(i), A, Q)
+                pred_state = KalmanFilter._filter_prediction(prev_state.model(i), A, Q, T)
                 # Update step
-                (m_[:,i,j], P_[:,:,i,j], L[i,j]) = KalmanFilter._filter_update(pred_state, observation, self.models[i].H, self.models[i].R)
+                (m_[:,i,j], P_[:,:,i,j], L[i,j]) = KalmanFilter._filter_update(pred_state, observation, self.models[i].H, self.models[i].R, self.models[i].T)
 
         # Posterior Transition
         # p(s_t-1=i, s_t=j | y_1:t) \propto L_t(i,j) * p(s_t=j | s_t-1=i) * p(s_t-1=i | y_1:t-1)
@@ -72,10 +68,10 @@ class SwitchingKalmanFilter:
         for k in xrange(self.n_models):
             A = self.models[k].A
             Q = self.models[k].Q
-            latent_slice = self.models[k].slice
+            T = self.models[k].T
             for j in xrange(self.n_models):
                 # Smoothing step
-                (m_[:,j,k], P_[:,:,j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, latent_slice)
+                (m_[:,j,k], P_[:,:,j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, T)
 
         # Posterior Transition
         # p(s_t=j | s_t+1=k, y_1:T) \approx \propto p(s_t+1=k | s_t=j) * p(s_t=j | y_1:t)

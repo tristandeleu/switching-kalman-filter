@@ -1,5 +1,9 @@
 import numpy as np
 
+def dot3(A, B, C):
+    return np.dot(A, np.dot(B, C))
+
+
 class KalmanState:
 
     def __init__(self, mean, covariance):
