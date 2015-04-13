@@ -22,7 +22,7 @@ for i in xrange(n):
 smoothed_states = [state] * n
 for i in xrange(1, n):
     j = n - 1 - i
-    state = KalmanFilter.smoother(state, filtered_states[j], model.A, model.Q)
+    state = KalmanFilter.smoother(filtered_states_kf[j], state, model.A, model.Q)
     smoothed_states[j] = state
 
 # Visualization
