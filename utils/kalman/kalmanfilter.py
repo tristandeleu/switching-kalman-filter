@@ -55,8 +55,10 @@ class KalmanFilter:
         # [P_k+1^-]^-1
         if T is None:
             Pm1 = np.linalg.inv(pred_next_state.P)
+            dist = multivariate_normal(mean=pred_next_state.m, cov=pred_next_state.P)
         else:
             Pm1 = dot3(T.T, np.linalg.inv(dot3(T, pred_next_state.P, T.T)), T)
+            dist = multivariate_normal(mean=np.dot(T, pred_next_state.m), cov=dot3(T, pred_next_state.P, T.T))
             A = dot3(T.T, A, T) # TODO: Simplify T * T.T
         # C_k = P_k * A_k^T * [P_k+1^-]^-1
         C = dot3(filtered_state.P, A.T, Pm1)
@@ -64,6 +66,9 @@ class KalmanFilter:
         m = filtered_state.m + np.dot(C, next_state.m - pred_next_state.m)
         # P_k^s = P_k + C_k * [P_k+1^s - P_k+1^-] * C_k^T
         P = filtered_state.P + dot3(C, next_state.P - pred_next_state.P, C.T)
+        # L_t = N(m_k+1^s | m_k+1^-, P_k+1^-)
+        # L = dist.logpdf(next_state.m)
+        L = 0.0 # TODO
 
         return (m, P)
 
