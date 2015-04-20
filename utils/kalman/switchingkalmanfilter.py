@@ -64,6 +64,7 @@ class SwitchingKalmanFilter:
         P_ = np.zeros((self.n_hid, self.n_hid, self.n_models, self.n_models))
         state = SwitchingKalmanState(mean=np.zeros((self.n_hid, self.n_models)), \
             covariance=np.zeros((self.n_hid, self.n_hid, self.n_models)))
+        L = np.zeros((self.n_models, self.n_models))
 
         for k in xrange(self.n_models):
             A = self.models[k].A
@@ -71,11 +72,11 @@ class SwitchingKalmanFilter:
             T = self.models[k].T
             for j in xrange(self.n_models):
                 # Smoothing step
-                (m_[:,j,k], P_[:,:,j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, T)
+                (m_[:,j,k], P_[:,:,j,k], L[j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, T)
 
         # Posterior Transition
         # p(s_t=j | s_t+1=k, y_1:T) \approx \propto p(s_t+1=k | s_t=j) * p(s_t=j | y_1:t)
-        U = self.log_transmat.T + filtered_state.M
+        U = self.log_transmat.T + filtered_state.M + L
         U = U.T - logsumexp(U, axis=1)
         # p(s_t=j, s_t+1=k | y_1:T) = p(s_t=j | s_t+1=k, y_1:T) * p(s_t+1=k | y_1:T)
         M = U + next_state.M

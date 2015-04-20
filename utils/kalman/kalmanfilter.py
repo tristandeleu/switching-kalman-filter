@@ -58,6 +58,7 @@ class KalmanFilter:
             dist = multivariate_normal(mean=pred_next_state.m, cov=pred_next_state.P)
         else:
             Pm1 = dot3(T.T, np.linalg.inv(dot3(T, pred_next_state.P, T.T)), T)
+
             dist = multivariate_normal(mean=np.dot(T, pred_next_state.m), cov=dot3(T, pred_next_state.P, T.T))
             A = dot3(T.T, A, T) # TODO: Simplify T * T.T
         # C_k = P_k * A_k^T * [P_k+1^-]^-1
@@ -70,10 +71,10 @@ class KalmanFilter:
         # L = dist.logpdf(next_state.m)
         L = 0.0 # TODO
 
-        return (m, P)
+        return (m, P, L)
 
     @staticmethod
     def smoother(filtered_state, next_state, A, Q, T=None):
-        m, P = KalmanFilter._smoother(filtered_state, next_state, A, Q, T)
+        m, P, _ = KalmanFilter._smoother(filtered_state, next_state, A, Q, T)
 
         return KalmanState(mean=m, covariance=P)
