@@ -5,64 +5,58 @@ from scipy.stats import multivariate_normal
 
 class KalmanFilter:
 
-    @staticmethod
-    def _filter_prediction(prev_state, A, Q, T=None):
-        # Latent space compatibility
-        if T is not None:
-            A = dot3(T.T, A, T)
-            Q = dot3(T.T, Q, T)
+    def __init__(self, model):
+        self.model = model
+
+    def _filter_prediction(self, prev_state, T=None):
+        prev_state_m = prev_state.m if T is None else np.dot(T, prev_state.m)
+        prev_state_P = prev_state.P if T is None else dot3(T, prev_state.P, T.T)
         # m_k^- = A_k-1 * m_k-1
-        m = np.dot(A, prev_state.m)
+        m = np.dot(self.model.A, prev_state_m)
         # P_k^- = A_k-1 * P_k-1 * A_k-1^T + Q_k-1
-        P = dot3(A, prev_state.P, A.T) + Q
+        P = dot3(self.model.A, prev_state_P, self.model.A.T) + self.model.Q
 
         return KalmanState(mean=m, covariance=P)
 
-    @staticmethod
-    def _filter_update(pred_state, observation, H, R, T=None):
-        # Latent space compatibility
-        if T is not None:
-            H = np.dot(H, T)
+    def _filter_update(self, pred_state, observation):
         # v_k = y_k - H_k * m_k^-
-        v = observation - np.dot(H, pred_state.m)
+        v = observation - np.dot(self.model.H, pred_state.m)
         # S_k = H_k * P_k^- * H_k^T + R_k
-        S = dot3(H, pred_state.P, H.T) + R
+        S = dot3(self.model.H, pred_state.P, self.model.H.T) + self.model.R
         # K_k = P_k^- * H_k^T * S_k^-1
-        K = dot3(pred_state.P, H.T, np.linalg.inv(S))
+        K = dot3(pred_state.P, self.model.H.T, np.linalg.inv(S))
         # m_k = m_k^- + K_k * v_k
         m = pred_state.m + np.dot(K, v)
         # P_k = P_k^- - K_k * S_k * K_k^T
         P = pred_state.P - dot3(K, S, K.T)
         # L_t = N(v_t | 0, S_t)
-        dist = multivariate_normal(mean=np.zeros(S.shape[0]), cov=S)
+        dist = multivariate_normal(mean=np.zeros_like(v), cov=S)
         L = dist.logpdf(v)
 
         return (m, P, L)
 
-    @staticmethod
-    def filter(prev_state, observation, A, Q, H, R, T=None):
+    def filter(self, prev_state, observation, T=None):
         # Prediction step
-        pred_state = KalmanFilter._filter_prediction(prev_state, A, Q, T)
+        pred_state = self._filter_prediction(prev_state, T)
         # Update step
-        m, P, _ = KalmanFilter._filter_update(pred_state, observation, H, R, T)
+        m, P, _ = self._filter_update(pred_state, observation)
 
         return KalmanState(mean=m, covariance=P)
 
     # TODO: store the updated states instead of recomputing them
-    @staticmethod
-    def _smoother(filtered_state, next_state, A, Q, T=None):
-        pred_next_state = KalmanFilter._filter_prediction(filtered_state, A, Q, T)
+    def _smoother(self, filtered_state, next_state, T=None):
+        pred_next_state = self._filter_prediction(filtered_state, T)
         # [P_k+1^-]^-1
-        if T is None:
-            Pm1 = np.linalg.inv(pred_next_state.P)
-            dist = multivariate_normal(mean=pred_next_state.m, cov=pred_next_state.P)
-        else:
-            Pm1 = dot3(T.T, np.linalg.inv(dot3(T, pred_next_state.P, T.T)), T)
-
-            dist = multivariate_normal(mean=np.dot(T, pred_next_state.m), cov=dot3(T, pred_next_state.P, T.T))
-            A = dot3(T.T, A, T) # TODO: Simplify T * T.T
+        # if T is None:
+        #     Pm1 = np.linalg.inv(pred_next_state.P)
+        #     # dist = multivariate_normal(mean=pred_next_state.m, cov=pred_next_state.P)
+        # else:
+        #     Pm1 = dot3(T.T, np.linalg.inv(dot3(T, pred_next_state.P, T.T)), T)
+        #     # dist = multivariate_normal(mean=np.dot(T, pred_next_state.m), cov=dot3(T, pred_next_state.P, T.T))
+        #     # A = dot3(T.T, A, T) # TODO: Simplify T * T.T
+        Pm1 = np.linalg.inv(pred_next_state.P)
         # C_k = P_k * A_k^T * [P_k+1^-]^-1
-        C = dot3(filtered_state.P, A.T, Pm1)
+        C = dot3(filtered_state.P, self.model.A.T, Pm1)
         # m_k^s = m_k + C_k * [m_k+1^s - m_k+1^-]
         m = filtered_state.m + np.dot(C, next_state.m - pred_next_state.m)
         # P_k^s = P_k + C_k * [P_k+1^s - P_k+1^-] * C_k^T
@@ -73,8 +67,7 @@ class KalmanFilter:
 
         return (m, P, L)
 
-    @staticmethod
-    def smoother(filtered_state, next_state, A, Q, T=None):
-        m, P, _ = KalmanFilter._smoother(filtered_state, next_state, A, Q, T)
+    def smoother(self, filtered_state, next_state, T=None):
+        m, P, _ = self._smoother(filtered_state, next_state, T)
 
         return KalmanState(mean=m, covariance=P)
