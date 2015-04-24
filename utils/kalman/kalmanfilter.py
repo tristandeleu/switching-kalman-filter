@@ -46,25 +46,25 @@ class KalmanFilter:
     # TODO: store the updated states instead of recomputing them
     def _smoother(self, filtered_state, next_state, T=None):
         pred_next_state = self._filter_prediction(filtered_state, T)
+
+        A = self.model.A if T is None else np.dot(self.model.A, T)
+        next_state_m = next_state.m if T is None else np.dot(T, next_state.m)
+        next_state_P = next_state.P if T is None else dot3(T, next_state.P, T.T)
         # [P_k+1^-]^-1
-        # if T is None:
-        #     Pm1 = np.linalg.inv(pred_next_state.P)
-        #     # dist = multivariate_normal(mean=pred_next_state.m, cov=pred_next_state.P)
-        # else:
-        #     Pm1 = dot3(T.T, np.linalg.inv(dot3(T, pred_next_state.P, T.T)), T)
-        #     # dist = multivariate_normal(mean=np.dot(T, pred_next_state.m), cov=dot3(T, pred_next_state.P, T.T))
-        #     # A = dot3(T.T, A, T) # TODO: Simplify T * T.T
         Pm1 = np.linalg.inv(pred_next_state.P)
+        # dist = multivariate_normal(mean=pred_next_state.m, cov=pred_next_state.P)
         # C_k = P_k * A_k^T * [P_k+1^-]^-1
-        C = dot3(filtered_state.P, self.model.A.T, Pm1)
+        C = dot3(filtered_state.P, A.T, Pm1)
         # m_k^s = m_k + C_k * [m_k+1^s - m_k+1^-]
-        m = filtered_state.m + np.dot(C, next_state.m - pred_next_state.m)
+        m = filtered_state.m + np.dot(C, next_state_m - pred_next_state.m)
         # P_k^s = P_k + C_k * [P_k+1^s - P_k+1^-] * C_k^T
-        P = filtered_state.P + dot3(C, next_state.P - pred_next_state.P, C.T)
+        P = filtered_state.P + dot3(C, next_state_P - pred_next_state.P, C.T)
         # L_t = N(m_k+1^s | m_k+1^-, P_k+1^-)
-        # L = dist.logpdf(next_state.m)
+        # L = dist.logpdf(next_state_m)
         L = 0.0 # TODO
 
+        m = m if T is None else np.dot(T, m)
+        P = P if T is None else dot3(T, P, T.T)
         return (m, P, L)
 
     def smoother(self, filtered_state, next_state, T=None):

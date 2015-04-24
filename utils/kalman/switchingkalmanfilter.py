@@ -62,19 +62,16 @@ class SwitchingKalmanFilter:
         return state
 
     def smoother(self, next_state, filtered_state):
-        m_ = np.zeros((self.n_hid, self.n_models, self.n_models))
-        P_ = np.zeros((self.n_hid, self.n_hid, self.n_models, self.n_models))
-        state = SwitchingKalmanState(mean=np.zeros((self.n_hid, self.n_models)), \
-            covariance=np.zeros((self.n_hid, self.n_hid, self.n_models)))
+        gpb_ = self._init_gpb()
+        state = SwitchingKalmanState(n_models=self.n_models)
         L = np.zeros((self.n_models, self.n_models))
 
         for k in xrange(self.n_models):
-            A = self.models[k].A
-            Q = self.models[k].Q
-            T = self.models[k].T
+            kalman = KalmanFilter(model=self.models[k])
             for j in xrange(self.n_models):
                 # Smoothing step
-                (m_[:,j,k], P_[:,:,j,k], L[j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, T)
+                (gpb_[k].m[:,j], gpb_[k].P[:,:,j], L[j,k]) = kalman._smoother(\
+                    filtered_state.model(j), next_state.model(j), self.embeds[j][k])
 
         # Posterior Transition
         # p(s_t=j | s_t+1=k, y_1:T) \approx \propto p(s_t+1=k | s_t=j) * p(s_t=j | y_1:t)
@@ -89,6 +86,8 @@ class SwitchingKalmanFilter:
 
         # Collapse step
         for j in xrange(self.n_models):
-            (state.m[:,j], state.P[:,:,j]) = self._collapse(m_[:,:,j], P_[:,:,:,j], W[:,j])
+            # (state.m[:,j], state.P[:,:,j]) = self._collapse(m_[:,:,j], P_[:,:,:,j], W[:,j])
+            m, P = self._collapse(gpb_[j].m, gpb_[j].P, W[:,j], self.masks[j])
+            state._states[j] = KalmanState(mean=m, covariance=P)
 
         return state

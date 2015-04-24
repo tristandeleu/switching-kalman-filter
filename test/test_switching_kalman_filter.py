@@ -57,18 +57,17 @@ for i in xrange(n):
     state = kalman.filter(state, observation)
     filtered_states[i] = state
 
-# smoothed_states = [state] * n
-# for i in xrange(1, n):
-#     j = n - 1 - i
-#     state = kalman.smoother(state, filtered_states[j])
-#     smoothed_states[j] = state
+smoothed_states = [state] * n
+for i in xrange(1, n):
+    j = n - 1 - i
+    state = kalman.smoother(state, filtered_states[j])
+    smoothed_states[j] = state
 
 print '---- %.3f seconds ----' % (time.time() - start_time,)
 
-output_states = filtered_states
-# output_states = smoothed_states
+# output_states = filtered_states
+output_states = smoothed_states
 
-# smoothed = np.asarray(map(lambda state: np.dot(state.m[0:2,:], np.exp(state.M)), output_states))
 embeds_f = [np.eye(6), T.T]
 smoothed_collapsed = map(lambda state: state.collapse(embeds_f), output_states)
 smoothed = np.asarray(map(lambda state: state.m, smoothed_collapsed))
