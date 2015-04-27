@@ -64,18 +64,17 @@ class SwitchingKalmanFilter:
     def smoother(self, next_state, filtered_state):
         gpb_ = self._init_gpb()
         state = SwitchingKalmanState(n_models=self.n_models)
-        L = np.zeros((self.n_models, self.n_models))
 
         for k in xrange(self.n_models):
             kalman = KalmanFilter(model=self.models[k])
             for j in xrange(self.n_models):
                 # Smoothing step
-                (gpb_[k].m[:,j], gpb_[k].P[:,:,j], L[j,k]) = kalman._smoother(\
+                (gpb_[k].m[:,j], gpb_[k].P[:,:,j]) = kalman._smoother(\
                     filtered_state.model(j), next_state.model(j), self.embeds[j][k])
 
         # Posterior Transition
         # p(s_t=j | s_t+1=k, y_1:T) \approx \propto p(s_t+1=k | s_t=j) * p(s_t=j | y_1:t)
-        U = self.log_transmat.T + filtered_state.M + L
+        U = self.log_transmat.T + filtered_state.M
         U = U.T - logsumexp(U, axis=1)
         # p(s_t=j, s_t+1=k | y_1:T) = p(s_t=j | s_t+1=k, y_1:T) * p(s_t+1=k | y_1:T)
         M = U + next_state.M

@@ -52,20 +52,16 @@ class KalmanFilter:
         next_state_P = next_state.P if T is None else dot3(T, next_state.P, T.T)
         # [P_k+1^-]^-1
         Pm1 = np.linalg.inv(pred_next_state.P)
-        # dist = multivariate_normal(mean=pred_next_state.m, cov=pred_next_state.P)
         # C_k = P_k * A_k^T * [P_k+1^-]^-1
         C = dot3(filtered_state.P, A.T, Pm1)
         # m_k^s = m_k + C_k * [m_k+1^s - m_k+1^-]
         m = filtered_state.m + np.dot(C, next_state_m - pred_next_state.m)
         # P_k^s = P_k + C_k * [P_k+1^s - P_k+1^-] * C_k^T
         P = filtered_state.P + dot3(C, next_state_P - pred_next_state.P, C.T)
-        # L_t = N(m_k+1^s | m_k+1^-, P_k+1^-)
-        # L = dist.logpdf(next_state_m)
-        L = 0.0 # TODO
 
         m = m if T is None else np.dot(T, m)
         P = P if T is None else dot3(T, P, T.T)
-        return (m, P, L)
+        return (m, P)
 
     def smoother(self, filtered_state, next_state, T=None):
         m, P, _ = self._smoother(filtered_state, next_state, T)
