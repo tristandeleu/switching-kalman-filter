@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.misc import logsumexp
-from .utils import SwitchingKalmanState
+from .utils import SwitchingKalmanState, KalmanState
 from .kalmanfilter import KalmanFilter
 
 # See: K. P. Murphy, Switching Kalman Filters
@@ -8,41 +8,41 @@ from .kalmanfilter import KalmanFilter
 
 class SwitchingKalmanFilter:
 
-    def __init__(self, n_obs, n_hid, models, log_transmat, masks):
-        self.n_obs = n_obs
-        self.n_hid = n_hid
+    def __init__(self, models, log_transmat, masks, embeds):
         self.models = models
         self.n_models = len(models)
         self.log_transmat = log_transmat
         self.masks = masks
+        self.embeds = embeds
 
-    def _collapse(self, mu_X, V_XX, W):
+    def _collapse(self, mu_X, V_XX, W, mask):
         mu = np.dot(mu_X, W)
 
         mu_X_c = mu_X.T - mu
-        mu_X_m = np.dot(self.masks, mu_X_c.T)
+        mu_X_m = np.dot(mask, mu_X_c.T)
         V = np.dot(V_XX, W)
         for i in xrange(self.n_models):
             V += W[i] * np.dot(mu_X_m[:,:,i].T, mu_X_m[:,:,i])
 
         return (mu, V)
 
+    def _init_gpb(self):
+        return [KalmanState(mean=np.zeros((model.n_hid, self.n_models)), \
+            covariance=np.zeros((model.n_hid, model.n_hid, self.n_models))) \
+            for model in self.models]
+
     def filter(self, prev_state, observation):
-        m_ = np.zeros((self.n_hid, self.n_models, self.n_models))
-        P_ = np.zeros((self.n_hid, self.n_hid, self.n_models, self.n_models))
-        state = SwitchingKalmanState(mean=np.zeros((self.n_hid, self.n_models)), \
-            covariance=np.zeros((self.n_hid, self.n_hid, self.n_models)))
+        gpb_ = self._init_gpb()
+        state = SwitchingKalmanState(n_models=self.n_models)
         L = np.zeros((self.n_models, self.n_models))
 
         for j in xrange(self.n_models):
-            A = self.models[j].A
-            Q = self.models[j].Q
-            T = self.models[j].T
+            kalman = KalmanFilter(model=self.models[j])
             for i in xrange(self.n_models):
                 # Prediction step
-                pred_state = KalmanFilter._filter_prediction(prev_state.model(i), A, Q, T)
+                pred_state = kalman._filter_prediction(prev_state.model(i), self.embeds[i][j])
                 # Update step
-                (m_[:,i,j], P_[:,:,i,j], L[i,j]) = KalmanFilter._filter_update(pred_state, observation, self.models[i].H, self.models[i].R, self.models[i].T)
+                (gpb_[j].m[:,i], gpb_[j].P[:,:,i], L[i,j]) = kalman._filter_update(pred_state, observation)
 
         # Posterior Transition
         # p(s_t-1=i, s_t=j | y_1:t) \propto L_t(i,j) * p(s_t=j | s_t-1=i) * p(s_t-1=i | y_1:t-1)
@@ -55,23 +55,22 @@ class SwitchingKalmanFilter:
 
         # Collapse step
         for j in xrange(self.n_models):
-            (state.m[:,j], state.P[:,:,j]) = self._collapse(m_[:,:,j], P_[:,:,:,j], W[:,j])
+            # (state.m[:,j], state.P[:,:,j]) = self._collapse(gpb_[j].m, gpb_[j].P, W[:,j])
+            m, P = self._collapse(gpb_[j].m, gpb_[j].P, W[:,j], self.masks[j])
+            state._states[j] = KalmanState(mean=m, covariance=P)
 
         return state
 
     def smoother(self, next_state, filtered_state):
-        m_ = np.zeros((self.n_hid, self.n_models, self.n_models))
-        P_ = np.zeros((self.n_hid, self.n_hid, self.n_models, self.n_models))
-        state = SwitchingKalmanState(mean=np.zeros((self.n_hid, self.n_models)), \
-            covariance=np.zeros((self.n_hid, self.n_hid, self.n_models)))
+        gpb_ = self._init_gpb()
+        state = SwitchingKalmanState(n_models=self.n_models)
 
         for k in xrange(self.n_models):
-            A = self.models[k].A
-            Q = self.models[k].Q
-            T = self.models[k].T
+            kalman = KalmanFilter(model=self.models[k])
             for j in xrange(self.n_models):
                 # Smoothing step
-                (m_[:,j,k], P_[:,:,j,k]) = KalmanFilter._smoother(filtered_state.model(j), next_state.model(j), A, Q, T)
+                (gpb_[k].m[:,j], gpb_[k].P[:,:,j]) = kalman._smoother(\
+                    filtered_state.model(j), next_state.model(j), self.embeds[j][k])
 
         # Posterior Transition
         # p(s_t=j | s_t+1=k, y_1:T) \approx \propto p(s_t+1=k | s_t=j) * p(s_t=j | y_1:t)
@@ -86,6 +85,8 @@ class SwitchingKalmanFilter:
 
         # Collapse step
         for j in xrange(self.n_models):
-            (state.m[:,j], state.P[:,:,j]) = self._collapse(m_[:,:,j], P_[:,:,:,j], W[:,j])
+            # (state.m[:,j], state.P[:,:,j]) = self._collapse(m_[:,:,j], P_[:,:,:,j], W[:,j])
+            m, P = self._collapse(gpb_[j].m, gpb_[j].P, W[:,j], self.masks[j])
+            state._states[j] = KalmanState(mean=m, covariance=P)
 
         return state
