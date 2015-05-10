@@ -58,3 +58,6 @@ target/
 
 # Data folder
 data/
+
+# IPython notebook checkpoints
+notebooks/.ipynb_checkpoints/

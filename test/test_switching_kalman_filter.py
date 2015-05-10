@@ -8,8 +8,8 @@ from utils.helpers import *
 import matplotlib.pyplot as plt
 
 # positions = load_trajectory(1080, 100)
-positions = load_trajectory(1462, 79)
-# positions = load_trajectory(3331, 100)
+# positions = load_trajectory(1462, 79)
+positions = load_trajectory(3331, 100)
 # positions = load_random_trajectory()
 n = positions.shape[0]
 
