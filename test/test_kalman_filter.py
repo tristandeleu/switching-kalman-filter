@@ -1,7 +1,7 @@
 import numpy as np
 
 from utils.kalman import KalmanFilter, KalmanState, KalmanObservation
-from utils.kalman.models import CWPA2D
+from utils.kalman.models import NDCWPA
 from utils.helpers import *
 
 import matplotlib.pyplot as plt
@@ -11,18 +11,19 @@ n = positions.shape[0]
 
 # Kalman Filter
 state = KalmanState(mean=np.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), covariance=10.0 * np.eye(6))
-model = CWPA2D(dt=1.0, q=2e-2, r=10.0)
+model = NDCWPA(dt=1.0, q=2e-2, r=10.0, n_dim=2)
+kalman = KalmanFilter(model=model)
 
 filtered_states = [state] * n
 for i in xrange(n):
     observation = positions[i]
-    state = KalmanFilter.filter(state, observation, model.A, model.Q, model.H, model.R)
+    state = kalman.filter(state, observation)
     filtered_states[i] = state
 
 smoothed_states = [state] * n
 for i in xrange(1, n):
     j = n - 1 - i
-    state = KalmanFilter.smoother(filtered_states_kf[j], state, model.A, model.Q)
+    state = kalman.smoother(filtered_states[j], state)
     smoothed_states[j] = state
 
 # Visualization

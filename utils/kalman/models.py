@@ -34,14 +34,14 @@ class CWPA(_KalmanModel):
         dt5 = dt * dt4 / 20.0
 
         self.A = np.asarray([
-            [1.0, dt, dt2 ],
-            [0.0, 1.0, dt ],
+            [1.0,  dt, dt2],
+            [0.0, 1.0,  dt],
             [0.0, 0.0, 1.0]
         ])
         self.Q = q * np.asarray([
             [dt5, dt4, dt3],
             [dt4, dt3, dt2],
-            [dt3, dt2, dt ]
+            [dt3, dt2,  dt]
         ])
         self.R = r
         self.H = np.asarray([1.0, 0.0, 0.0])
@@ -60,14 +60,14 @@ class NDCWPA(CWPA):
         self.n_obs = n_dim
         self.n_hid = 3 * n_dim
         self.A = np.kron(np.asarray([
-            [1.0, dt, dt2 ],
-            [0.0, 1.0, dt ],
+            [1.0,  dt, dt2],
+            [0.0, 1.0,  dt],
             [0.0, 0.0, 1.0]
         ]), I)
         self.Q = q * np.kron(np.asarray([
             [dt5, dt4, dt3],
             [dt4, dt3, dt2],
-            [dt3, dt2, dt ]
+            [dt3, dt2,  dt]
         ]), I)
         self.R = np.kron(r, I)
         self.H = np.kron(np.asarray([1.0, 0.0, 0.0]), I)

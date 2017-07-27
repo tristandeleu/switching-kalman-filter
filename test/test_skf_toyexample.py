@@ -68,13 +68,13 @@ class ManeuveringTarget(object):
 
 n = 200
 t = ManeuveringTarget(x0=0, y0=0, v0=3, heading=np.pi/4)
-positions = np.zeros((n,2))
-Q = np.random.randn(n,2) * 0.2
+positions = np.zeros((n, 2))
+Q = np.random.randn(n, 2) * 0.2
 
 for i in xrange(100):
-    positions[i,:] = t.update()
+    positions[i, :] = t.update()
 t.set_commanded_stop(50)
-t.set_commanded_heading(np.pi/2, 50)
+t.set_commanded_heading(np.pi / 2, 50)
 for i in xrange(100):
     positions[100 + i,:] = t.update()
 
@@ -82,17 +82,18 @@ positions += Q
 
 state = KalmanState(mean=np.zeros(6), covariance=10.0 * np.eye(6))
 model = NDCWPA(dt=1.0, q=2e-2, r=10.0, n_dim=2)
+kalman = KalmanFilter(model=model)
 
 filtered_states_kf = [state] * n
 for i in xrange(n):
     observation = positions[i]
-    state = KalmanFilter.filter(state, observation, model.A, model.Q, model.H, model.R, model.T)
+    state = kalman.filter(state, observation)
     filtered_states_kf[i] = state
 
 smoothed_states_kf = [state] * n
 for i in xrange(1, n):
     j = n - 1 - i
-    state = KalmanFilter.smoother(filtered_states_kf[j], state, model.A, model.Q, model.T)
+    state = kalman.smoother(filtered_states_kf[j], state)
     smoothed_states_kf[j] = state
 
 models = [
@@ -103,18 +104,29 @@ Z = np.log(np.asarray([
     [0.99, 0.01],
     [0.01, 0.99]
 ]))
-masks = np.asarray([
-    np.diag([1, 0, 1, 0, 1, 0]),
-    np.diag([0, 1, 0, 1, 0, 1])
-])
+masks = [
+    np.array([
+        np.diag([1, 0, 1, 0, 1, 0]),
+        np.diag([0, 1, 0, 1, 0, 1])
+    ]),
+    np.array([
+        np.diag([1, 0]),
+        np.diag([0, 1])
+    ])
+]
 
-kalman = SwitchingKalmanFilter(n_obs=2, n_hid=6, models=models, log_transmat=Z, masks=masks)
+T = np.kron(np.array([1, 0, 0]), np.eye(2))
+embeds = [
+    [np.eye(6), T],
+    [T.T, np.eye(2)]
+]
 
-state = SwitchingKalmanState(mean=np.zeros((6,2)), covariance=np.zeros((6,6,2)))
-state.P[:,:,0] = 10.0 * np.eye(6)
-state.P[:,:,1] = 10.0 * np.eye(6)
-# state.M = np.ones(2) / 2.0
-state.M = np.log([0.5, 0.5])
+kalman = SwitchingKalmanFilter(models=models, log_transmat=Z, masks=masks, embeds=embeds)
+
+state = SwitchingKalmanState(n_models=2)
+state._states[0] = KalmanState(mean=np.zeros(6), covariance=10.0 * np.eye(6))
+state._states[1] = KalmanState(mean=np.zeros(2), covariance=10.0 * np.eye(2))
+state.M = np.ones(2) / 2.0
 
 filtered_states_skf = [state] * n
 for i in xrange(n):
@@ -128,12 +140,16 @@ for i in xrange(1, n):
     state = kalman.smoother(state, filtered_states_skf[j])
     smoothed_states_skf[j] = state
 
-# output_states_skf = filtered_states_skf
-output_states_skf = smoothed_states_skf
-# output_states_kf = filtered_states_kf
-output_states_kf = smoothed_states_kf
+display_smoothed = True
+if display_smoothed:
+    output_states_skf = smoothed_states_skf
+    output_states_kf = smoothed_states_kf
+else:
+    output_states_skf = filtered_states_skf
+    output_states_kf = filtered_states_kf
 
-smoothed_skf = np.asarray(map(lambda state: np.dot(state.m[0:2,:], np.exp(state.M)), output_states_skf))
+smoothed_collapsed = map(lambda state: state.collapse([np.eye(6), T.T]), output_states_skf)
+smoothed_skf = np.asarray(map(lambda state: state.m, smoothed_collapsed))
 smoothed_kf = np.asarray(map(lambda state: state.x(), output_states_kf))
 stops = np.asarray(map(lambda state: np.exp(state.M[1]), output_states_skf))
 

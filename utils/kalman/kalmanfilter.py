@@ -64,6 +64,6 @@ class KalmanFilter:
         return (m, P)
 
     def smoother(self, filtered_state, next_state, T=None):
-        m, P, _ = self._smoother(filtered_state, next_state, T)
+        m, P = self._smoother(filtered_state, next_state, T)
 
         return KalmanState(mean=m, covariance=P)
