@@ -52,18 +52,18 @@ state._states[1] = KalmanState(mean=np.zeros(2), covariance=10.0 * np.eye(2))
 state.M = np.ones(2) / 2.0
 
 filtered_states = [state] * n
-for i in xrange(n):
+for i in range(n):
     observation = positions[i]
     state = kalman.filter(state, observation)
     filtered_states[i] = state
 
 smoothed_states = [state] * n
-for i in xrange(1, n):
+for i in range(1, n):
     j = n - 1 - i
     state = kalman.smoother(state, filtered_states[j])
     smoothed_states[j] = state
 
-print '---- %.3f seconds ----' % (time.time() - start_time,)
+print('---- %.3f seconds ----' % (time.time() - start_time,))
 
 # output_states = filtered_states
 output_states = smoothed_states

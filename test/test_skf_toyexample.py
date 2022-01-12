@@ -71,11 +71,11 @@ t = ManeuveringTarget(x0=0, y0=0, v0=3, heading=np.pi/4)
 positions = np.zeros((n, 2))
 Q = np.random.randn(n, 2) * 0.2
 
-for i in xrange(100):
+for i in range(100):
     positions[i, :] = t.update()
 t.set_commanded_stop(50)
 t.set_commanded_heading(np.pi / 2, 50)
-for i in xrange(100):
+for i in range(100):
     positions[100 + i,:] = t.update()
 
 positions += Q
@@ -85,13 +85,13 @@ model = NDCWPA(dt=1.0, q=2e-2, r=10.0, n_dim=2)
 kalman = KalmanFilter(model=model)
 
 filtered_states_kf = [state] * n
-for i in xrange(n):
+for i in range(n):
     observation = positions[i]
     state = kalman.filter(state, observation)
     filtered_states_kf[i] = state
 
 smoothed_states_kf = [state] * n
-for i in xrange(1, n):
+for i in range(1, n):
     j = n - 1 - i
     state = kalman.smoother(filtered_states_kf[j], state)
     smoothed_states_kf[j] = state
@@ -129,13 +129,13 @@ state._states[1] = KalmanState(mean=np.zeros(2), covariance=10.0 * np.eye(2))
 state.M = np.ones(2) / 2.0
 
 filtered_states_skf = [state] * n
-for i in xrange(n):
+for i in range(n):
     observation = positions[i]
     state = kalman.filter(state, observation)
     filtered_states_skf[i] = state
 
 smoothed_states_skf = [state] * n
-for i in xrange(1, n):
+for i in range(1, n):
     j = n - 1 - i
     state = kalman.smoother(state, filtered_states_skf[j])
     smoothed_states_skf[j] = state

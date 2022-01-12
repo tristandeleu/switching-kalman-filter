@@ -9,7 +9,7 @@ class _KalmanModel(object):
 
     @observation.setter
     def observation(self, value):
-        print 'ok'
+        print('ok')
         self.H = value['H']
         self.R = value['R']
 
@@ -120,8 +120,8 @@ class NDBrownian(Brownian):
 
 if __name__ == '__main__':
     model = NDCWPA(dt=1.0, q=2e-2, r=10.0, n_dim=2)
-    print model.__dict__
+    print("model before observation:", model.__dict__)
     obs = model.observation
     obs['R'] = 3
     model.observation = obs
-    print model.__dict__
+    print("model after observation:", model.__dict__)
