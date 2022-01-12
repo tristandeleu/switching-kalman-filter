@@ -1,5 +1,13 @@
 import numpy as np
 
+import os
+import sys
+import inspect
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
+
 from utils.kalman import SwitchingKalmanState, SwitchingKalmanFilter, KalmanFilter, KalmanState
 from utils.kalman.models import NDCWPA, NDBrownian
 
@@ -148,10 +156,10 @@ else:
     output_states_skf = filtered_states_skf
     output_states_kf = filtered_states_kf
 
-smoothed_collapsed = map(lambda state: state.collapse([np.eye(6), T.T]), output_states_skf)
-smoothed_skf = np.asarray(map(lambda state: state.m, smoothed_collapsed))
-smoothed_kf = np.asarray(map(lambda state: state.x(), output_states_kf))
-stops = np.asarray(map(lambda state: np.exp(state.M[1]), output_states_skf))
+smoothed_collapsed = [ state.collapse([np.eye(6), T.T]) for state in output_states_skf ]
+smoothed_skf = np.asarray([state.m for state in smoothed_collapsed])
+smoothed_kf = np.asarray([state.x() for state in output_states_kf])
+stops = np.asarray([np.exp(state.M[1]) for state in output_states_skf])
 
 subplot_shape = (2,2)
 

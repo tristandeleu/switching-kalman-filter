@@ -1,6 +1,14 @@
 import csv, time
 import numpy as np
 
+import os
+import sys
+import inspect
+
+currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+parentdir = os.path.dirname(currentdir)
+sys.path.insert(0, parentdir) 
+
 from utils.kalman import SwitchingKalmanState, SwitchingKalmanFilter, KalmanState
 from utils.kalman.models import NDCWPA, NDBrownian
 from utils.helpers import *
@@ -9,7 +17,7 @@ import matplotlib.pyplot as plt
 
 # positions = load_trajectory(1080, 100)
 # positions = load_trajectory(1462, 79)
-positions = load_trajectory(3331, 100)
+positions = load_trajectory(1, 1)
 # positions = load_random_trajectory()
 n = positions.shape[0]
 
@@ -69,9 +77,9 @@ print('---- %.3f seconds ----' % (time.time() - start_time,))
 output_states = smoothed_states
 
 embeds_f = [np.eye(6), T.T]
-smoothed_collapsed = map(lambda state: state.collapse(embeds_f), output_states)
-smoothed = np.asarray(map(lambda state: state.m, smoothed_collapsed))
-stops = np.asarray(map(lambda state: np.exp(state.M[1]), output_states))
+smoothed_collapsed = [state.collapse(embeds_f) for state in output_states]
+smoothed = np.asarray([ state.m for state in smoothed_collapsed ])
+stops = np.asarray([ np.exp(state.M[1]) for state in output_states])
 
 subplot_shape = (2,2)
 plt.subplot2grid(subplot_shape, (0,0), rowspan=2)
@@ -84,8 +92,8 @@ plt.plot(range(n), stops)
 plt.plot(range(n), 0.5 * np.ones(n), 'r--')
 
 plt.subplot2grid(subplot_shape, (1,1))
-velocity = np.asarray(map(lambda state: state.m[2:4], smoothed_collapsed))
-plt.plot(range(n), map(lambda v: 3.6 * np.linalg.norm(v), velocity))
+velocity = np.asarray([state.m[2:4] for state in smoothed_collapsed])
+plt.plot(range(n), [3.6 * np.linalg.norm(v) for v in velocity])
 
 # for state in output_states:
 #     # print state._states[1].P[0:2,0:2]
