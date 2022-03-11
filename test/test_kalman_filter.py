@@ -18,7 +18,8 @@ positions = load_trajectory(1, 1)
 n = positions.shape[0]
 
 # Kalman Filter
-state = KalmanState(mean=np.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), covariance=10.0 * np.eye(6))
+state = KalmanState(mean=np.asarray([0.0, 0.0, 0.0, 0.0, 0.0, 0.0]), 
+                    covariance=10.0 * np.eye(6))
 model = NDCWPA(dt=1.0, q=2e-2, r=10.0, n_dim=2)
 kalman = KalmanFilter(model=model)
 

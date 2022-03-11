@@ -6,16 +6,25 @@ def dot3(A, B, C):
 
 class KalmanState(object):
 
-    def __init__(self, mean, covariance):
+    def __init__(self, mean, covariance, ord=3):
         self.m = mean
         self.P = covariance
 
-    def x(self): return self.m[0:2]
+        self.ord = ord
+        self.dim = int(self.m.shape[0]/self.ord)
 
-    def dx(self): return self.m[2:4]
+    def x(self): 
+        return self.m[0:self.dim]
 
-    def ddx(self): return self.m[4:6]
+    def dx(self): 
+        if self.ord < 2:
+            raise ValueError("No velocity in Kalman state")
+        return self.m[self.dim:2*self.dim]
 
+    def ddx(self): 
+        if self.ord < 3: 
+            raise ValueError("No acceleration in Kalman state")
+        return self.m[2*self.dim:3*self.dim]
 
 class KalmanObservation:
 

@@ -46,6 +46,7 @@ class SwitchingKalmanFilter:
 
         # Posterior Transition
         # p(s_t-1=i, s_t=j | y_1:t) \propto L_t(i,j) * p(s_t=j | s_t-1=i) * p(s_t-1=i | y_1:t-1)
+        # NOTE: add log likelihood
         M = L.T + self.log_transmat.T + prev_state.M
         M = M.T - logsumexp(M)
         # p(s_t=j | y_1:t) = \sum_i p(s_t-1=i, s_t=j | y_1:t)
