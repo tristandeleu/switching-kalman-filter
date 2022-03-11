@@ -9,106 +9,57 @@ parentdir = os.path.dirname(currentdir)
 sys.path.insert(0, parentdir) 
 
 from utils.kalman import SwitchingKalmanState, SwitchingKalmanFilter, KalmanFilter, KalmanState
-from utils.kalman.models import NDCWPA, NDBrownian
+from utils.kalman.models import NDCWPA, NDBrownian, RandAcc
 
 import matplotlib.pyplot as plt
 
-
-def angle_between(x,y):
-  return min(y-x, y-x+2*np.pi, y-x-2*np.pi, key=np.abs)
-
-class ManeuveringTarget(object): 
-    def __init__(self, x0, y0, v0, heading):
-        self.x = x0
-        self.y = y0
-        self.vel = v0
-        self.hdg = heading
-        
-        self.cmd_vel = v0
-        self.cmd_hdg = heading
-        self.vel_step = 0
-        self.hdg_step = 0
-        self.vel_delta = 0
-        self.hdg_delta = 0
-        self.stop_step = 0
-        
-        
-    def update(self):
-        if self.stop_step > 0:
-            self.stop_step -= 1
-            # return np.array([self.x, self.y])
-        else:
-            vx = self.vel * np.cos(self.hdg)
-            vy = self.vel * np.sin(self.hdg)
-            self.x += vx
-            self.y += vy
-        
-        if self.hdg_step > 0:
-            self.hdg_step -= 1
-            self.hdg += self.hdg_delta
-
-        if self.vel_step > 0:
-            self.vel_step -= 1
-            self.vel += self.vel_delta
-
-        return np.array([self.x, self.y])
-        
-
-    def set_commanded_heading(self, hdg_degrees, steps):
-        self.cmd_hdg = hdg_degrees
-        self.hdg_delta = angle_between(self.cmd_hdg, self.hdg) / steps
-        if abs(self.hdg_delta) > 0:
-            self.hdg_step = steps
-        else:
-            self.hdg_step = 0
-            
-            
-    def set_commanded_speed(self, speed, steps):
-        self.cmd_vel = speed
-        self.vel_delta = (self.cmd_vel - self.vel) / steps
-        if abs(self.vel_delta) > 0:
-            self.vel_step = steps
-        else:
-            self.vel_step = 0
-
-    def set_commanded_stop(self, steps):
-        self.stop_step = steps
-
 # Generate toyexample data
-n = 200
-t = ManeuveringTarget(x0=0, y0=0, v0=10, heading=np.pi/4)
-positions = np.zeros((n, 2))
-Q = np.random.randn(n, 2) * 2.0
+K_pos = 7.0
 
-for i in range(100):
-    positions[i, :] = t.update()
-t.set_commanded_stop(50)
-t.set_commanded_heading(np.pi / 2, 50)
-for i in range(100):
-    positions[100 + i,:] = t.update()
+n_pts = 1000
+pos_min, pos_max = 0.1, 20.0
+dx = (pos_max-pos_min)/n_pts
 
-positions += Q
-plt.plot(positions[:,0], positions[:,1], label="trajectory")
-plt.legend()
-plt.show()
+pos_ary = np.linspace(pos_min, pos_max, n_pts)
+f_ary = 1000*(pos_ary-K_pos)
+f_ary[f_ary<0] = 0
+
+f_noise = f_ary + 5*np.random.randn(*f_ary.shape)
 
 # evaluate single Kalman filter
-state = KalmanState(mean=np.zeros(6), covariance=10.0 * np.eye(6))
-model = NDCWPA(dt=1.0, q=2e-2, r=10.0, n_dim=2)
+model_name = 'RandAcc'
+if model_name == 'NDCWPA':
+    state = KalmanState(mean=np.zeros(3), covariance=1.0 * np.eye(3), ord=3)
+    model = NDCWPA(dt=dx, q=2e-2, r=10.0, n_dim=1)
+elif model_name == 'RandAcc': 
+    state = KalmanState(mean=np.zeros(2), covariance=1.0 * np.eye(2), ord=2)
+    model = RandAcc(dt=dx, q=2e-2, r=10.0)
 kalman = KalmanFilter(model=model)
 
-filtered_states_kf = [state] * n
-for i in range(n):
-    observation = positions[i]
+filtered_states_kf = [state] * n_pts
+for i in range(n_pts):
+    observation = f_noise[i]
     state = kalman.filter(state, observation)
     filtered_states_kf[i] = state
 
-smoothed_states_kf = [state] * n
-for i in range(1, n):
-    j = n - 1 - i
+smoothed_states_kf = [state] * n_pts
+for i in range(1, n_pts):
+    j = n_pts - 1 - i
     state = kalman.smoother(filtered_states_kf[j], state)
     smoothed_states_kf[j] = state
 
+filtered_kf = np.asarray([state.x()[0] for state in filtered_states_kf])
+filtered_df_kf = np.asarray([state.x()[1] for state in filtered_states_kf])
+smoothed_kf = np.asarray([state.x()[0] for state in smoothed_states_kf])
+
+print("smoothed kf shape:", smoothed_kf.shape)
+
+np.save("f_ary.npy", f_ary)
+np.save("pos_ary.npy", pos_ary)
+np.save(model_name+"_f.npy", filtered_kf)
+np.save(model_name+"_K.npy", filtered_df_kf)
+
+sys.exit(0)
 # evaluate switching Kalman filter
 models = [
     NDCWPA(dt=1.0, q=2e-2, r=10.0, n_dim=2),
@@ -166,12 +117,6 @@ smoothed_collapsed = [ state.collapse([np.eye(6), T.T]) for state in output_stat
 smoothed_skf = np.asarray([state.m for state in smoothed_collapsed])
 smoothed_kf = np.asarray([state.x() for state in output_states_kf])
 stops = np.asarray([np.exp(state.M[1]) for state in output_states_skf])
-
-kf_vel = np.asarray([state.dx() for state in output_states_kf])
-plt.plot(kf_vel[:, 0], label="x velocity")
-plt.plot(kf_vel[:, 1], label="y velocity")
-plt.legend()
-plt.show()
 
 subplot_shape = (2,2)
 

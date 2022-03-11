@@ -9,7 +9,7 @@ class _KalmanModel(object):
 
     @observation.setter
     def observation(self, value):
-        print 'ok'
+        print('ok')
         self.H = value['H']
         self.R = value['R']
 
@@ -22,7 +22,19 @@ class _KalmanModel(object):
 
     # dynamic = property(get_dynamic, set_dynamic)
     
+class RandAcc(_KalmanModel):
+    def __init__(self, dt=1.0, q=2e-2, r=10.0):
 
+        self.A = np.asarray([
+            [1.0,  dt],
+            [0.0, 1.0]
+        ])
+        self.Q = q * np.asarray([
+            [.25*dt**4, .5*dt**3],
+            [ .5*dt**3,    dt**2]
+        ])
+        self.R = np.array([[r]])
+        self.H = np.array([[1.0, 0.0]])
 
 class CWPA(_KalmanModel):
     # Continuous Wiener Process Acceleration
@@ -120,8 +132,8 @@ class NDBrownian(Brownian):
 
 if __name__ == '__main__':
     model = NDCWPA(dt=1.0, q=2e-2, r=10.0, n_dim=2)
-    print model.__dict__
+    print("model before observation:", model.__dict__)
     obs = model.observation
     obs['R'] = 3
     model.observation = obs
-    print model.__dict__
+    print("model after observation:", model.__dict__)

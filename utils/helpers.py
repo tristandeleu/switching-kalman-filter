@@ -9,8 +9,9 @@ def load_trajectory_by_path(path):
         reader = csv.reader(f)
         next(reader, None) # Skip headers
         for row in reader:
-            positions.append(map(float, row))
+            positions.append([float(x) for x in row])
     positions = np.asarray(positions)
+    print("positions: ", positions)
 
     return positions
 
@@ -25,7 +26,7 @@ def load_random_trajectory():
     driver = random.choice(drivers)
     trajectories = glob.glob('%s/*.csv' % driver)
     path = random.choice(trajectories)
-    print path
+    print("path:", path)
     trajectory = load_trajectory_by_path(path)
 
     return trajectory

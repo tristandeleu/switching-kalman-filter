@@ -6,16 +6,25 @@ def dot3(A, B, C):
 
 class KalmanState(object):
 
-    def __init__(self, mean, covariance):
+    def __init__(self, mean, covariance, ord=3):
         self.m = mean
         self.P = covariance
 
-    def x(self): return self.m[0:2]
+        self.ord = ord
+        self.dim = int(self.m.shape[0]/self.ord)
 
-    def dx(self): return self.m[2:4]
+    def x(self): 
+        return self.m[0:self.dim]
 
-    def ddx(self): return self.m[4:6]
+    def dx(self): 
+        if self.ord < 2:
+            raise ValueError("No velocity in Kalman state")
+        return self.m[self.dim:2*self.dim]
 
+    def ddx(self): 
+        if self.ord < 3: 
+            raise ValueError("No acceleration in Kalman state")
+        return self.m[2*self.dim:3*self.dim]
 
 class KalmanObservation:
 
@@ -36,11 +45,11 @@ class SwitchingKalmanState(object):
     def collapse(self, embeds):
         m = 0.0
         P = 0.0
-        for i in xrange(self.n_models):
+        for i in range(self.n_models):
             T = embeds[i]
             m += np.exp(self.M[i]) * np.dot(T, self._states[i].m)
 
-        for i in xrange(self.n_models):
+        for i in range(self.n_models):
             T = embeds[i]
             m_c = np.dot(T, self._states[i].m) - m
             P += np.exp(self.M[i]) * (dot3(T, self._states[i].P, T.T) + \
